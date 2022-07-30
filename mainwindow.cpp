@@ -27,7 +27,9 @@ void MainWindow::on_browseBtn_clicked()
 
 void MainWindow::on_downloadBtn_clicked()
 {
-    pIsp->set_comName(ui->comNameComboBox->currentText().split(" ")[0]);
+    //pIsp->set_comName(ui->comNameComboBox->currentText().split(" ")[0]);
+    pIsp->set_fileName(ui->pathEdit->text());
+    pIsp->download();
 }
 
 

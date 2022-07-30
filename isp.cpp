@@ -120,3 +120,23 @@ int Isp::erase_chip()
         emit send_isp_msg(tr("Full chip erase"));
     return 0;
 }
+
+int Isp::download()
+{
+    return 0;
+}
+
+int Isp::write_block(uint32_t addr_, uint8_t *pData_, int len_)
+{
+    return 0;
+}
+
+uint8_t Isp::check_sum(uint8_t *pData_, int len_)
+{
+    uint8_t checkSum = 0;
+    while(len_--)
+    {
+        checkSum ^= *pData_++;
+    }
+    return checkSum;
+}
