@@ -47,6 +47,7 @@ public:
 
 signals:
     void send_isp_msg(QString str);
+    void send_progress_bar_value(int value);
 
 private:
     QSerialPort *pSerial;

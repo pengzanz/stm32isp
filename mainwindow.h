@@ -35,6 +35,8 @@ private slots:
 
     void msg_display(QString str);
 
+    void progress_bar_update(int value);
+
 private:
     Ui::MainWindow *ui;
     Isp *pIsp;

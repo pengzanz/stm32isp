@@ -1,4 +1,5 @@
 #include "isp.h"
+#include <QFile>
 
 Isp::Isp(QObject *parent) : QObject(parent)
 {
@@ -123,11 +124,84 @@ int Isp::erase_chip()
 
 int Isp::download()
 {
+    uint32_t address = 0X08000000;
+    uint32_t nsend = 0;
+    if(isConnect == false)
+        return -1;
+    QFile file(fileName);
+    if(!file.exists()){
+        emit send_isp_msg(tr("File is not exist"));
+        return -1;
+    }
+    emit send_isp_msg(fileName);
+
+    if(erase_chip() != 0)
+        return -1;
+
+    if(!file.open(QFile::ReadOnly)){
+        emit send_isp_msg(QString("File open error"));
+        return -1;
+    }
+
+    emit send_isp_msg(tr("Start Program"));
+
+    while(true)
+    {
+        QByteArray data = file.read(256);
+        if(data.size() == 0)
+        {
+            break;
+        }
+
+        while(true)
+        {
+            if(write_block(address, (uint8_t*)data.data(), data.size()) == 0)
+            {
+                address += data.size();
+                nsend += data.size();
+                emit send_progress_bar_value((float)nsend / (float)file.size() * 100);
+                break;
+            }else
+            {
+                emit send_isp_msg(QString("* [0X%1] write error，retry").arg(address, 8, 16, QChar('0')));
+            }
+        }
+    }
+    file.close();
     return 0;
 }
 
 int Isp::write_block(uint32_t addr_, uint8_t *pData_, int len_)
 {
+    uint8_t write_block_cmd[300];
+    write_block_cmd[0] = ISP_CMD_WM;
+    write_block_cmd[1] = ISP_CMD_WM ^ 0xff;
+    pSerial->write((char*)write_block_cmd, 2);
+    pSerial->waitForReadyRead(50);
+    pSerial->read((char*)write_block_cmd, 1);
+    if(write_block_cmd[0] != ISP_ACK)
+        return -1;
+
+    write_block_cmd[0] = (addr_ >> 24) & 0xff;
+    write_block_cmd[1] = (addr_ >> 16) & 0xff;
+    write_block_cmd[2] = (addr_ >> 8) & 0xff;
+    write_block_cmd[3] = (addr_ ) & 0xff;
+    write_block_cmd[4] = check_sum(write_block_cmd, 4);
+    pSerial->write((char*)write_block_cmd, 5);
+    pSerial->waitForReadyRead(50);
+    pSerial->read((char*)write_block_cmd, 1);
+    if(write_block_cmd[0] != ISP_ACK)
+        return -1;
+
+    write_block_cmd[0] = len_ - 1;
+    memcpy(write_block_cmd + 1, pData_, len_);
+    write_block_cmd[len_ + 1] = check_sum(write_block_cmd, len_ + 1);
+    pSerial->write((char*)write_block_cmd, len_ + 2);
+    pSerial->waitForReadyRead(100);
+    pSerial->read((char*)write_block_cmd, 1);
+    if(write_block_cmd[0] != ISP_ACK)
+        return -1;
+
     return 0;
 }
 

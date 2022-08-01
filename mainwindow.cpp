@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QSerialPortInfo>
+#include <QFileDialog>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -11,6 +12,7 @@ MainWindow::MainWindow(QWidget *parent)
     on_refreshBtn_clicked();
     pIsp = new Isp(this);
     connect(pIsp, SIGNAL(send_isp_msg(QString)), this, SLOT(msg_display(QString)));
+    connect(pIsp, SIGNAL(send_progress_bar_value(int)), this, SLOT(progress_bar_update(int)));
 }
 
 MainWindow::~MainWindow()
@@ -21,7 +23,8 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_browseBtn_clicked()
 {
-
+    QString fileName = QFileDialog::getOpenFileName(this, tr("选择固件"),"./", tr("(*.bin *.BIN)"));
+    ui->pathEdit->setText(fileName);
 }
 
 
@@ -82,5 +85,10 @@ void MainWindow::on_connectBtn_clicked()
 void MainWindow::msg_display(QString str)
 {
     ui->textBrowser->append(str);
+}
+
+void MainWindow::progress_bar_update(int value)
+{
+    ui->progressBar->setValue(value);
 }
 
