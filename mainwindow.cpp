@@ -30,7 +30,7 @@ void MainWindow::on_browseBtn_clicked()
 
 void MainWindow::on_downloadBtn_clicked()
 {
-    //pIsp->set_comName(ui->comNameComboBox->currentText().split(" ")[0]);  
+    //pIsp->set_comName(ui->comNameComboBox->currentText().split(" ")[0]);
     bool ok;
     if(!ui->addrEdit->text().contains("0x")){
         ui->textBrowser->append(tr("start address should be hex format"));

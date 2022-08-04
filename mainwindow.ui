@@ -83,7 +83,7 @@
       <string>Verify</string>
      </property>
     </widget>
-    <widget class="QCheckBox" name="checkBox_2">
+    <widget class="QCheckBox" name="readoutProtectCheckBox">
      <property name="geometry">
       <rect>
        <x>20</x>

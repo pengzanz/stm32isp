@@ -145,6 +145,7 @@ int Isp::download()
         return -1;
     if(verify_firmware(fileName) != 0)
         return -1;
+
     return 0;
 }
 
@@ -304,6 +305,50 @@ int Isp::read_block(uint32_t addr_, uint8_t *pData_, int len_)
         return -1;
     pSerial->waitForReadyRead(200);
     return pSerial->read((char*)pData_, len_);
+}
+
+int Isp::readout_protect()
+{
+    if(isConnect == false)
+        return -1;
+    uint8_t readout_protect_cmd[2];
+    readout_protect_cmd[0] = ISP_CMD_RP;
+    readout_protect_cmd[1] = ISP_CMD_RP ^ 0xff;
+    pSerial->write((char*)readout_protect_cmd, 2);
+    pSerial->waitForReadyRead(200);
+    pSerial->read((char*)readout_protect_cmd, 1);
+    pSerial->waitForReadyRead(200);
+    pSerial->read((char*)readout_protect_cmd + 1, 1);
+    if(readout_protect_cmd[0] == ISP_ACK && readout_protect_cmd[1]){
+        emit send_isp_msg(tr("Readout protect set success"));
+    }
+    else{
+        emit send_isp_msg(tr("Readout protect set failed"));
+        return -1;
+    }
+    return 0;
+}
+
+int Isp::readout_unprotect()
+{
+    if(isConnect == false)
+        return -1;
+    uint8_t readout_unprotect_cmd[2];
+    readout_unprotect_cmd[0] = ISP_CMD_UR;
+    readout_unprotect_cmd[1] = ISP_CMD_UR ^ 0xff;
+    pSerial->write((char*)readout_unprotect_cmd, 2);
+    pSerial->waitForReadyRead(200);
+    pSerial->read((char*)readout_unprotect_cmd, 1);
+    pSerial->waitForReadyRead(200);
+    pSerial->read((char*)readout_unprotect_cmd + 1, 1);
+    if(readout_unprotect_cmd[0] == ISP_ACK && readout_unprotect_cmd[1] == ISP_ACK){
+        emit send_isp_msg(tr("Readout protect clear success"));
+    }
+    else{
+        emit send_isp_msg(tr("Readout protect clear failed"));
+        return -1;
+    }
+    return 0;
 }
 
 uint8_t Isp::check_sum(uint8_t *pData_, int len_)

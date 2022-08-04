@@ -47,6 +47,8 @@ public:
     int write_block(uint32_t addr_, uint8_t *pData_, int len_);
     int verify_firmware(QString fileName_);
     int read_block(uint32_t addr_, uint8_t *pData_, int len_);
+    int readout_protect(void);
+    int readout_unprotect(void);
     uint8_t check_sum(uint8_t *pData_, int len_);
 
 signals:
