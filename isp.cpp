@@ -5,16 +5,22 @@ Isp::Isp(QObject *parent) : QObject(parent)
 {
     pSerial = new QSerialPort(this);
     isConnect = false;
+    startAddr = 0x08000000;
 }
 
-void Isp::set_comName(QString str)
+void Isp::set_comName(QString str_)
 {
-    comName = str;
+    comName = str_;
 }
 
-void Isp::set_fileName(QString str)
+void Isp::set_fileName(QString str_)
 {
-    fileName = str;
+    fileName = str_;
+}
+
+void Isp::set_startAddr(uint32_t addr_)
+{
+    startAddr = addr_;
 }
 
 int Isp::connect(QString comName_)
@@ -124,8 +130,6 @@ int Isp::erase_chip()
 
 int Isp::download()
 {
-    uint32_t address = 0X08000000;
-    uint32_t nsend = 0;
     if(isConnect == false)
         return -1;
     QFile file(fileName);
@@ -137,7 +141,18 @@ int Isp::download()
 
     if(erase_chip() != 0)
         return -1;
+    if(write_firmware(fileName) != 0)
+        return -1;
+    if(verify_firmware(fileName) != 0)
+        return -1;
+    return 0;
+}
 
+int Isp::write_firmware(QString fileName_)
+{
+    uint32_t address = startAddr;
+    uint32_t nsend = 0;
+    QFile file(fileName_);
     if(!file.open(QFile::ReadOnly)){
         emit send_isp_msg(QString("File open error"));
         return -1;
@@ -145,28 +160,29 @@ int Isp::download()
 
     emit send_isp_msg(tr("Start Program"));
 
-    while(true)
-    {
+    while(true){
         QByteArray data = file.read(256);
         if(data.size() == 0)
-        {
             break;
-        }
-
-        while(true)
-        {
-            if(write_block(address, (uint8_t*)data.data(), data.size()) == 0)
-            {
+        uint8_t errorIndex = 0;
+        while(true){
+            if(write_block(address, (uint8_t*)data.data(), data.size()) == 0){
                 address += data.size();
                 nsend += data.size();
                 emit send_progress_bar_value((float)nsend / (float)file.size() * 100);
                 break;
-            }else
-            {
-                emit send_isp_msg(QString("* [0X%1] write error，retry").arg(address, 8, 16, QChar('0')));
+            }else{
+                emit send_isp_msg(QString("* [0X%1] write error, retry").arg(address, 8, 16, QChar('0')));
+                errorIndex++;
+                if(errorIndex >= 10){
+                    emit send_isp_msg(QString("Download failed"));
+                    file.close();
+                    return -1;
+                }
             }
         }
     }
+    emit send_isp_msg(QString("Download completed"));
     file.close();
     return 0;
 }
@@ -203,6 +219,91 @@ int Isp::write_block(uint32_t addr_, uint8_t *pData_, int len_)
         return -1;
 
     return 0;
+}
+
+int Isp::verify_firmware(QString fileName_)
+{
+    uint32_t address = startAddr;
+    uint32_t nsend = 0;
+    QFile file(fileName_);
+    if(!file.open(QFile::ReadOnly)){
+        emit send_isp_msg(QString("File open error"));
+        return -1;
+    }
+    emit send_isp_msg(tr("Start Verify"));
+
+    while(true){
+        uint8_t receiveData[256] = {0};
+        QByteArray data = file.read(256);
+
+        if(data.size() == 0)
+            break;
+        uint8_t errorIndex = 0;
+        while(true){
+            if(read_block(address, receiveData, data.size()) == data.size()){
+                int i;
+                for(i = 0; i < data.size(); i++)
+                {
+                    if((uint8_t)data.at(i) != receiveData[i])
+                        break;
+                }
+                if(i == data.size()){
+                    address += data.size();
+                    nsend += data.size();
+                    emit send_progress_bar_value((float)nsend / (float)file.size() * 100);
+                    break;
+                }else{
+                    emit send_isp_msg(QString("Verify failed"));
+                    file.close();
+                    return -1;
+                }
+            }else{
+                emit send_isp_msg(QString("* [0X%1] verify error，retry").arg(address, 8, 16, QChar('0')));
+                errorIndex++;
+                if(errorIndex >= 10){
+                    emit send_isp_msg(QString("Verify failed"));
+                    file.close();
+                    return -1;
+                }
+            }
+        }
+    }
+    emit send_isp_msg(QString("Verify success"));
+    file.close();
+    return 0;
+}
+
+int Isp::read_block(uint32_t addr_, uint8_t *pData_, int len_)
+{
+    uint8_t read_block_cmd[300];
+    read_block_cmd[0] = ISP_CMD_RM;
+    read_block_cmd[1] = ISP_CMD_RM ^ 0xff;
+    pSerial->write((char*)read_block_cmd, 2);
+    pSerial->waitForReadyRead(20);
+    pSerial->read((char*)read_block_cmd, 1);
+    if(read_block_cmd[0] != ISP_ACK)
+        return -1;
+
+    read_block_cmd[0] = (addr_ >> 24) & 0xff;
+    read_block_cmd[1] = (addr_ >> 16) & 0xff;
+    read_block_cmd[2] = (addr_ >> 8) & 0xff;
+    read_block_cmd[3] = (addr_ ) & 0xff;
+    read_block_cmd[4] = check_sum(read_block_cmd, 4);
+    pSerial->write((char*)read_block_cmd, 5);
+    pSerial->waitForReadyRead(20);
+    pSerial->read((char*)read_block_cmd, 1);
+    if(read_block_cmd[0] != ISP_ACK)
+        return -1;
+
+    read_block_cmd[0] = len_ - 1;
+    read_block_cmd[1] = read_block_cmd[0] ^ 0xff;
+    pSerial->write((char*)read_block_cmd, 2);
+    pSerial->waitForReadyRead(50);
+    pSerial->read((char*)read_block_cmd, 1);
+    if(read_block_cmd[0] != ISP_ACK)
+        return -1;
+    pSerial->waitForReadyRead(200);
+    return pSerial->read((char*)pData_, len_);
 }
 
 uint8_t Isp::check_sum(uint8_t *pData_, int len_)

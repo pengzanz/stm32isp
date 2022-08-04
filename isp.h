@@ -34,15 +34,19 @@ class Isp : public QObject
     Q_OBJECT
 public:
     explicit Isp(QObject *parent = nullptr);
-    void set_comName(QString str);
-    void set_fileName(QString str);
+    void set_comName(QString str_);
+    void set_fileName(QString str_);
+    void set_startAddr(uint32_t addr_);
     int connect(QString comName_);
     int disconnect(void);
     int get_version(void);
     int get_id(void);
     int erase_chip(void);
     int download(void);
+    int write_firmware(QString fileName_);
     int write_block(uint32_t addr_, uint8_t *pData_, int len_);
+    int verify_firmware(QString fileName_);
+    int read_block(uint32_t addr_, uint8_t *pData_, int len_);
     uint8_t check_sum(uint8_t *pData_, int len_);
 
 signals:
@@ -54,6 +58,7 @@ private:
     QString comName;
     QString fileName;
     bool isConnect;
+    uint32_t startAddr;
 };
 
 #endif // ISP_H
