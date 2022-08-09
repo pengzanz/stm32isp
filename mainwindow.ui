@@ -65,7 +65,7 @@
     <property name="title">
      <string>GroupBox</string>
     </property>
-    <widget class="QCheckBox" name="checkBox">
+    <widget class="QCheckBox" name="verifyCheckBox">
      <property name="geometry">
       <rect>
        <x>20</x>

@@ -30,7 +30,6 @@ void MainWindow::on_browseBtn_clicked()
 
 void MainWindow::on_downloadBtn_clicked()
 {
-    //pIsp->set_comName(ui->comNameComboBox->currentText().split(" ")[0]);
     bool ok;
     if(!ui->addrEdit->text().contains("0x")){
         ui->textBrowser->append(tr("start address should be hex format"));
@@ -38,6 +37,8 @@ void MainWindow::on_downloadBtn_clicked()
     }
     pIsp->set_startAddr(ui->addrEdit->text().toUInt(&ok,16));
     pIsp->set_fileName(ui->pathEdit->text());
+    pIsp->set_verify(ui->verifyCheckBox->isChecked());
+    pIsp->set_readout_protect(ui->readoutProtectCheckBox->isChecked());
     pIsp->download();
 }
 
@@ -79,11 +80,15 @@ void MainWindow::on_refreshBtn_clicked()
 void MainWindow::on_connectBtn_clicked()
 {
     if(ui->connectBtn->text() == "Connect"){
-        if(pIsp->connect(ui->comNameComboBox->currentText().split(" ")[0]) == 0)
+        if(pIsp->com_connect(ui->comNameComboBox->currentText().split(" ")[0]) == 0
+                && pIsp->isp_connect() == 0){
             ui->connectBtn->setText("Disconnect");
+            pIsp->get_id();
+            pIsp->get_version();
+        }
     }
     else{
-        pIsp->disconnect();
+        pIsp->com_disconnect();
         ui->connectBtn->setText("Connect");
     }
 }

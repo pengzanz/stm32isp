@@ -37,8 +37,12 @@ public:
     void set_comName(QString str_);
     void set_fileName(QString str_);
     void set_startAddr(uint32_t addr_);
-    int connect(QString comName_);
-    int disconnect(void);
+    void set_verify(bool val_);
+    void set_readout_protect(bool val_);
+    int com_connect(QString comName_);
+    int com_disconnect(void);
+    int isp_connect(void);
+    int isp_disconnect(void);
     int get_version(void);
     int get_id(void);
     int erase_chip(void);
@@ -59,7 +63,10 @@ private:
     QSerialPort *pSerial;
     QString comName;
     QString fileName;
+    bool isComOpened;
     bool isConnect;
+    bool isVerify;
+    bool isReadoutProtect;
     uint32_t startAddr;
 };
 

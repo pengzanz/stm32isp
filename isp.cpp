@@ -4,7 +4,10 @@
 Isp::Isp(QObject *parent) : QObject(parent)
 {
     pSerial = new QSerialPort(this);
+    isComOpened = false;
     isConnect = false;
+    isVerify = false;
+    isReadoutProtect = false;
     startAddr = 0x08000000;
 }
 
@@ -23,9 +26,18 @@ void Isp::set_startAddr(uint32_t addr_)
     startAddr = addr_;
 }
 
-int Isp::connect(QString comName_)
+void Isp::set_verify(bool val_)
 {
-    uint8_t tmp = ISP_CMD_INIT;
+    isVerify = val_;
+}
+
+void Isp::set_readout_protect(bool val_)
+{
+    isReadoutProtect = val_;
+}
+
+int Isp::com_connect(QString comName_)
+{
 
     pSerial->setPortName(comName_);
     pSerial->setBaudRate(115200);
@@ -41,6 +53,21 @@ int Isp::connect(QString comName_)
     else
         emit send_isp_msg(tr("Com Open success!"));
 
+    return 0;
+}
+
+int Isp::com_disconnect()
+{
+    if(pSerial->isOpen())
+        pSerial->close();
+    isConnect = false;
+    return 0;
+}
+
+int Isp::isp_connect()
+{
+    uint8_t tmp = ISP_CMD_INIT;
+
     pSerial->write((const char*)&tmp, 1);
     pSerial->waitForReadyRead(300);
 
@@ -53,15 +80,11 @@ int Isp::connect(QString comName_)
         return -1;
     }
     isConnect = true;
-    get_version();
-    get_id();
     return 0;
 }
 
-int Isp::disconnect()
+int Isp::isp_disconnect()
 {
-    if(pSerial->isOpen())
-        pSerial->close();
     isConnect = false;
     return 0;
 }
@@ -111,6 +134,10 @@ int Isp::erase_chip()
     uint8_t erase_chip_cmd[2];
     if(isConnect == false)
         return -1;
+    if(readout_unprotect() != 0)
+        return -1;
+    isp_disconnect();
+    isp_connect();
     erase_chip_cmd[0] = ISP_CMD_ER;
     erase_chip_cmd[1] = ISP_CMD_ER ^ 0xff;
     pSerial->write((char*)erase_chip_cmd, 2);
@@ -138,13 +165,24 @@ int Isp::download()
         return -1;
     }
     emit send_isp_msg(fileName);
-
+    if(readout_unprotect() != 0)
+        return -1;
+    isp_disconnect();
+    isp_connect();
     if(erase_chip() != 0)
         return -1;
     if(write_firmware(fileName) != 0)
         return -1;
-    if(verify_firmware(fileName) != 0)
-        return -1;
+    if(isVerify){
+        if(verify_firmware(fileName) != 0)
+            return -1;
+    }
+    if(isReadoutProtect){
+        if(readout_protect() != 0)
+            return -1;
+        isp_disconnect();
+        isp_connect();
+    }
 
     return 0;
 }
