@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include <QSerialPortInfo>
 #include <QFileDialog>
+#include <QThread>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -39,7 +40,13 @@ void MainWindow::on_downloadBtn_clicked()
     pIsp->set_fileName(ui->pathEdit->text());
     pIsp->set_verify(ui->verifyCheckBox->isChecked());
     pIsp->set_readout_protect(ui->readoutProtectCheckBox->isChecked());
-    pIsp->download();
+    //pIsp->download();
+
+    QThread *pThread = new QThread;
+    QObject::connect(pThread, SIGNAL(finished()), pThread, SLOT(deleteLater()));
+    QObject::connect(pThread, SIGNAL(started()), pIsp, SLOT(download()));
+    pIsp->moveToThread(pThread);
+    pThread->start();
 }
 
 

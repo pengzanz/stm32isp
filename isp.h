@@ -46,7 +46,7 @@ public:
     int get_version(void);
     int get_id(void);
     int erase_chip(void);
-    int download(void);
+
     int write_firmware(QString fileName_);
     int write_block(uint32_t addr_, uint8_t *pData_, int len_);
     int verify_firmware(QString fileName_);
@@ -54,6 +54,8 @@ public:
     int readout_protect(void);
     int readout_unprotect(void);
     uint8_t check_sum(uint8_t *pData_, int len_);
+public slots:
+    int download(void);
 
 signals:
     void send_isp_msg(QString str);
